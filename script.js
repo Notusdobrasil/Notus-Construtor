@@ -1,236 +1,601 @@
-// O CÓDIGO JAVASCRIPT PERMANECE O MESMO, MAS COM PEQUENOS AJUSTES
-        // PARA MANIPULAR AS NOVAS CLASSES CSS.
-        document.addEventListener('DOMContentLoaded', () => {
-            const products = [
-                { id: 1, name: 'Corrente 0.7mm Veneziana 70cm', price: 139.90, oldPrice: 159.99, rating: 4.8, reviews: 297, image: 'image/Prata1.jpeg' },
-                { id: 2, name: 'Corrente 2mm 1x1 60cm', price: 209.90, oldPrice: 219.99, rating: 4.9, reviews: 272, image: 'image/Prata2.jpeg' },
-                { id: 3, name: 'Pulseira 2.5mm Cordão Baiano', price: 179.90, oldPrice: 219.00, rating: 5.0, reviews: 303, image: 'image/Prata3.jpeg' },
-                { id: 4, name: 'Brinco Brilhante 5mm', price: 49.90, oldPrice: 99.98, rating: 4.7, reviews: 79, image: 'https://placehold.co/400x400/1a1a1a/ffffff?text=Joia+4' },
-                { id: 5, name: 'Anel Solitário Ouro', price: 349.90, oldPrice: 400.00, rating: 4.9, reviews: 150, image: 'https://placehold.co/400x400/1a1a1a/ffffff?text=Joia+5' },
-                { id: 6, name: 'Pingente Cruz Detalhada', price: 89.90, oldPrice: 110.00, rating: 4.8, reviews: 95, image: 'https://placehold.co/400x400/1a1a1a/ffffff?text=Joia+6' },
-                { id: 7, name: 'Tornozeleira Ponto de Luz', price: 75.50, oldPrice: 90.00, rating: 4.7, reviews: 120, image: 'https://placehold.co/400x400/1a1a1a/ffffff?text=Joia+7' },
-                { id: 8, name: 'Argola Cravejada Média', price: 129.90, oldPrice: 150.00, rating: 4.9, reviews: 210, image: 'https://placehold.co/400x400/1a1a1a/ffffff?text=Joia+8' }
-            ];
-            const whatsappNumber = '5511942138664'; 
-            let cart = [];
-            let favorites = [];
+document.addEventListener('DOMContentLoaded', () => {
+        // DOM Elements
+        const editorContainer = document.getElementById('editor-container');
+        const viewPageContainer = document.getElementById('view-page-container');
+        const canvas = document.getElementById('canvas');
+        const world = document.getElementById('world');
+        const cardLayer = document.getElementById('card-layer');
+        const svgLayer = document.getElementById('svg-layer');
+        const addCardBtn = document.getElementById('addCardBtn');
+        const connectModeBtn = document.getElementById('connectModeBtn');
+        const toggleGuideBtn = document.getElementById('toggleGuideBtn');
+        const resolutionGuide = document.getElementById('resolution-guide');
+        const resetViewBtn = document.getElementById('resetViewBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const viewModeBtn = document.getElementById('viewModeBtn');
+        const editModal = document.getElementById('editModal');
+        const saveModalBtn = document.getElementById('saveModalBtn');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const deleteCardBtn = document.getElementById('deleteCardBtn');
+        const cardTypeSelect = document.getElementById('cardType');
+        const imageUrlWrapper = document.getElementById('imageUrl-wrapper');
+        const imageUrlInput = document.getElementById('imageUrl');
+        const cardNameInput = document.getElementById('cardName');
+        const cardTitleInput = document.getElementById('cardTitle');
+        
+        // View Page Elements
+        const viewCanvas = document.getElementById('view-canvas');
+        const viewWorld = document.getElementById('view-world');
+        const viewCardLayer = document.getElementById('view-card-layer');
+        const viewSvgLayer = document.getElementById('view-svg-layer');
+        const timestampEl = document.getElementById('timestamp');
 
-            const productList = document.getElementById('product-list');
-            const cartBtn = document.getElementById('cart-btn');
-            const favoritesBtn = document.getElementById('favorites-btn');
-            const cartModal = document.getElementById('cart-modal');
-            const favoritesModal = document.getElementById('favorites-modal');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-            const closeFavoritesModalBtn = document.getElementById('close-favorites-modal-btn');
 
-            function renderProducts() {
-                productList.innerHTML = '';
-                products.forEach(product => {
-                    const isFavorite = favorites.some(fav => fav.id === product.id);
-                    const productCard = document.createElement('div');
-                    productCard.className = 'product-card';
-                    productCard.innerHTML = `
-                        <div class="product-image-wrapper">
-                            <img src="${product.image}" alt="${product.name}" class="product-image">
-                            <button class="icon-btn favorite-btn ${isFavorite ? 'active' : ''}" data-product-id="${product.id}">
-                                <i class="fa-${isFavorite ? 'solid' : 'regular'} fa-heart"></i>
-                            </button>
-                        </div>
-                        <div class="product-info">
-                            <h3>${product.name}</h3>
-                            <div class="product-rating">
-                                <div class="stars">${'★'.repeat(Math.floor(product.rating))}${'☆'.repeat(5 - Math.floor(product.rating))}</div>
-                                <span class="reviews">${product.reviews} avaliações</span>
-                            </div>
-                            <div class="product-pricing">
-                                <span class="old-price">R$ ${product.oldPrice.toFixed(2).replace('.', ',')}</span>
-                                <span class="current-price">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
-                            </div>
-                            <button class="add-to-cart-btn">Adicionar ao Carrinho</button>
-                        </div>
-                    `;
-                    productCard.querySelector('.add-to-cart-btn').addEventListener('click', () => addToCart(product));
-                    productCard.querySelector('.favorite-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleFavorite(product);
-                    });
-                    productList.appendChild(productCard);
-                });
+        let state = {
+            cards: [],
+            connections: [],
+            pan: { x: 0, y: 0, scale: 1 },
+            isConnectMode: false,
+            firstConnectionTarget: null,
+            editingCardId: null,
+            dragging: {
+                isDown: false,
+                cardId: null,
+                offset: { x: 0, y: 0 },
+                dragStartPos: { x: 0, y: 0 },
+                axisLock: null,
+                hasDragged: false
+            },
+            lineDragging: {
+                isDown: false,
+                connId: null,
+                startY: 0
+            }
+        };
+
+        let history = [];
+        let historyIndex = -1;
+
+        const CARD_WIDTH = 180;
+        const CARD_HEIGHT = 90;
+        const SPACING_X = 80;
+        const SPACING_Y = 80;
+
+        // --- History Management ---
+        function pushStateToHistory() {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            const stateToSave = {
+                cards: JSON.parse(JSON.stringify(state.cards)),
+                connections: JSON.parse(JSON.stringify(state.connections)),
+                pan: JSON.parse(JSON.stringify(state.pan)) // Save pan state as well
+            };
+            history.push(stateToSave);
+            historyIndex = history.length - 1;
+            localStorage.setItem('orgChartBuilderState', JSON.stringify(stateToSave));
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                loadStateFromHistory();
+            }
+        }
+
+        function redo() {
+             if (historyIndex < history.length - 1) {
+                historyIndex++;
+                loadStateFromHistory();
+            }
+        }
+
+        function loadStateFromHistory() {
+            const historicState = history[historyIndex];
+            state.cards = JSON.parse(JSON.stringify(historicState.cards));
+            state.connections = JSON.parse(JSON.stringify(historicState.connections));
+            state.pan = JSON.parse(JSON.stringify(historicState.pan || { x: 0, y: 0, scale: 1 }));
+            render();
+        }
+
+        // --- State Management ---
+        function loadState() {
+            const savedState = localStorage.getItem('orgChartBuilderState');
+            if (savedState) {
+                const loadedData = JSON.parse(savedState);
+                state.cards = loadedData.cards || [];
+                state.connections = loadedData.connections || [];
+                state.pan = loadedData.pan || { x: 0, y: 0, scale: 1 };
+                // Don't push to history on initial load, only on user action
+                history = [loadedData];
+                historyIndex = 0;
+            }
+        }
+
+        // --- Rendering ---
+        function render(isViewOnly = false) {
+            const currentCardLayer = isViewOnly ? viewCardLayer : cardLayer;
+            const currentSvgLayer = isViewOnly ? viewSvgLayer : svgLayer;
+            const currentWorld = isViewOnly ? viewWorld : world;
+            const currentCanvas = isViewOnly ? viewCanvas : canvas;
+
+            currentCardLayer.innerHTML = '';
+            currentSvgLayer.innerHTML = '';
+            
+            const transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.pan.scale})`;
+            currentWorld.style.transform = transform;
+            
+            if (!isViewOnly) {
+                currentCanvas.classList.toggle('connect-mode-active', state.isConnectMode);
             }
 
-            function renderCart() {
-                const cartItemsContainer = document.getElementById('cart-items');
-                const cartTotalEl = document.getElementById('cart-total');
-                const cartCount = document.getElementById('cart-count');
+            state.cards.forEach(cardData => renderCard(cardData, isViewOnly));
+            state.connections.forEach(conn => renderConnection(conn, isViewOnly));
+        }
 
-                cartItemsContainer.innerHTML = '';
-                if (cart.length === 0) {
-                    cartItemsContainer.innerHTML = '<p>Seu carrinho está vazio.</p>';
-                } else {
-                    cart.forEach(item => {
-                        const cartItem = document.createElement('div');
-                        cartItem.className = 'cart-item';
-                        cartItem.innerHTML = `
-                            <div class="item-details">
-                                <img src="${item.image}" alt="${item.name}">
-                                <div class="item-info">
-                                    <h4>${item.name}</h4>
-                                    <p>R$ ${item.price.toFixed(2).replace('.', ',')}</p>
-                                </div>
-                            </div>
-                            <div class="item-actions">
-                                <div class="quantity-control">
-                                    <button class="quantity-change" data-product-id="${item.id}" data-change="-1">-</button>
-                                    <span>${item.quantity}</span>
-                                    <button class="quantity-change" data-product-id="${item.id}" data-change="1">+</button>
-                                </div>
-                                <button class="remove-btn remove-from-cart-btn" data-product-id="${item.id}"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        `;
-                        cartItemsContainer.appendChild(cartItem);
-                    });
-                }
-
-                const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                cartTotalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-                
-                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-                cartCount.textContent = totalItems;
-                cartCount.classList.toggle('hidden', totalItems === 0);
-
-                document.querySelectorAll('.remove-from-cart-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => removeFromCart(parseInt(e.currentTarget.dataset.productId)));
-                });
-                document.querySelectorAll('.quantity-change').forEach(btn => {
-                    btn.addEventListener('click', (e) => updateQuantity(parseInt(e.currentTarget.dataset.productId), parseInt(e.currentTarget.dataset.change)));
-                });
+        function renderCard(cardData, isViewOnly) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            if (cardData.type === 'department') cardEl.classList.add('card-department');
+            if (!isViewOnly && state.firstConnectionTarget && state.firstConnectionTarget.type === 'card' && cardData.id === state.firstConnectionTarget.id) {
+                cardEl.classList.add('selected-for-connection');
             }
             
-            function renderFavorites() {
-                const favoriteItemsContainer = document.getElementById('favorite-items');
-                const favoritesCount = document.getElementById('favorites-count');
+            cardEl.style.left = `${cardData.x}px`;
+            cardEl.style.top = `${cardData.y}px`;
+            cardEl.dataset.id = cardData.id;
 
-                favoriteItemsContainer.innerHTML = '';
-                if (favorites.length === 0) {
-                    favoriteItemsContainer.innerHTML = '<p>Você ainda não favoritou nenhum item.</p>';
-                } else {
-                    favorites.forEach(item => {
-                        const favoriteItem = document.createElement('div');
-                        favoriteItem.className = 'favorite-item';
-                        favoriteItem.innerHTML = `
-                            <div class="item-details">
-                                <img src="${item.image}" alt="${item.name}">
-                                <div class="item-info">
-                                    <h4>${item.name}</h4>
-                                    <p>R$ ${item.price.toFixed(2).replace('.', ',')}</p>
-                                </div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="add-fav-to-cart-btn" data-product-id="${item.id}"><i class="fa-solid fa-cart-plus"></i></button>
-                                <button class="remove-btn remove-from-favorites-btn" data-product-id="${item.id}"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        `;
-                        favoriteItemsContainer.appendChild(favoriteItem);
-                    });
-                }
-                
-                favoritesCount.textContent = favorites.length;
-                favoritesCount.classList.toggle('hidden', favorites.length === 0);
+            const placeholderImg = `https://placehold.co/60x60/e2e8f0/64748b?text=${cardData.name.charAt(0)}`;
+            let innerHTML = `
+                <img class="card-photo" src="${cardData.imageUrl || placeholderImg}" onerror="this.src='${placeholderImg}'">
+                <h3 class="name font-bold text-gray-800 text-sm">${cardData.name}</h3>
+                <p class="title text-xs text-gray-500">${cardData.title}</p>
+            `;
+            if (!isViewOnly) {
+                innerHTML += `
+                    <div class="add-btn add-btn-top" data-direction="top">+</div>
+                    <div class="add-btn add-btn-right" data-direction="right">+</div>
+                    <div class="add-btn add-btn-bottom" data-direction="bottom">+</div>
+                    <div class="add-btn add-btn-left" data-direction="left">+</div>
+                `;
+            }
+            cardEl.innerHTML = innerHTML;
+            (isViewOnly ? viewCardLayer : cardLayer).appendChild(cardEl);
+        }
 
-                document.querySelectorAll('.remove-from-favorites-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const product = products.find(p => p.id === parseInt(e.currentTarget.dataset.productId));
-                        toggleFavorite(product);
-                    });
-                });
-                
-                document.querySelectorAll('.add-fav-to-cart-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const product = products.find(p => p.id === parseInt(e.currentTarget.dataset.productId));
-                        addToCart(product);
-                        toggleModal(favoritesModal, false);
-                        toggleModal(cartModal, true);
-                    });
-                });
+        function getElbowPath(p1, p2, customMidY) {
+            const midY = customMidY !== undefined ? customMidY : (p1.y + p2.y) / 2;
+            return `M${p1.x},${p1.y} L${p1.x},${midY} L${p2.x},${midY} L${p2.x},${p2.y}`;
+        }
+        
+        function getPointFromTarget(target) {
+            if (!target) return null;
+            if (target.type === 'card') {
+                const card = state.cards.find(c => c.id === target.id);
+                if (!card) return null;
+                return { x: card.x + CARD_WIDTH / 2, y: card.y + CARD_HEIGHT / 2 };
+            } else if (target.type === 'connection') {
+                return target.point;
+            }
+            return null;
+        }
+
+        function renderConnection(conn, isViewOnly) {
+            const currentSvgLayer = isViewOnly ? viewSvgLayer : svgLayer;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('stroke', '#94a3b8');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            path.dataset.connId = conn.id;
+            if (!isViewOnly && state.firstConnectionTarget && state.firstConnectionTarget.type === 'connection' && conn.id === state.firstConnectionTarget.id) {
+                path.classList.add('selected-for-connection');
             }
 
-            function addToCart(product) {
-                const existingItem = cart.find(item => item.id === product.id);
-                if (existingItem) {
-                    existingItem.quantity++;
-                } else {
-                    cart.push({ ...product, quantity: 1 });
-                }
-                renderCart();
-            }
-
-            function removeFromCart(productId) {
-                cart = cart.filter(item => item.id !== productId);
-                renderCart();
-            }
+            const p1 = getPointFromTarget(conn.from);
+            const p2 = getPointFromTarget(conn.to);
             
-            function updateQuantity(productId, change) {
-                const item = cart.find(item => item.id === productId);
-                if (item) {
-                    item.quantity += change;
-                    if (item.quantity <= 0) {
-                        removeFromCart(productId);
+            if (p1 && p2) {
+                const d = getElbowPath(p1, p2, conn.customMidY);
+                path.setAttribute('d', d);
+                currentSvgLayer.appendChild(path);
+
+                if (!isViewOnly) {
+                    const handle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    handle.setAttribute('d', `M${p1.x},${conn.customMidY || (p1.y + p2.y) / 2} L${p2.x},${conn.customMidY || (p1.y + p2.y) / 2}`);
+                    handle.setAttribute('stroke-width', '10');
+                    handle.classList.add('line-handle');
+                    handle.dataset.connId = conn.id;
+                    currentSvgLayer.appendChild(handle);
+                }
+            }
+        }
+
+        // --- Card & Modal Logic ---
+        function addCard(fromCardId = null, direction = null) {
+            const newCard = {
+                id: Date.now(),
+                name: 'Novo Card',
+                title: 'Descrição',
+                imageUrl: '',
+                type: 'employee',
+                x: 0, y: 0
+            };
+
+            if (fromCardId && direction) {
+                const fromCard = state.cards.find(c => c.id === fromCardId);
+                if (fromCard) {
+                    switch (direction) {
+                        case 'top': newCard.x = fromCard.x; newCard.y = fromCard.y - CARD_HEIGHT - SPACING_Y; break;
+                        case 'right': newCard.x = fromCard.x + CARD_WIDTH + SPACING_X; newCard.y = fromCard.y; break;
+                        case 'bottom': newCard.x = fromCard.x; newCard.y = fromCard.y + CARD_HEIGHT + SPACING_Y; break;
+                        case 'left': newCard.x = fromCard.x - CARD_WIDTH - SPACING_X; newCard.y = fromCard.y; break;
+                    }
+                    state.connections.push({ id: Date.now(), from: {type: 'card', id: fromCard.id}, to: {type: 'card', id: newCard.id} });
+                }
+            } else {
+                const viewCenterX = (canvas.clientWidth / 2) - (CARD_WIDTH / 2);
+                const viewCenterY = (canvas.clientHeight / 2) - (CARD_HEIGHT / 2);
+                newCard.x = (viewCenterX - state.pan.x) / state.pan.scale;
+                newCard.y = (viewCenterY - state.pan.y) / state.pan.scale;
+            }
+            state.cards.push(newCard);
+            updateAndRender();
+        }
+
+        function deleteCard(cardId) {
+            state.connections = state.connections.filter(conn => conn.from.id !== cardId && conn.to.id !== cardId);
+            state.cards = state.cards.filter(c => c.id !== cardId);
+            updateAndRender();
+        }
+
+        function openEditModal(cardId) {
+            const card = state.cards.find(c => c.id === cardId);
+            if (card) {
+                state.editingCardId = cardId;
+                cardTypeSelect.value = card.type || 'employee';
+                imageUrlInput.value = card.imageUrl || '';
+                cardNameInput.value = card.name;
+                cardTitleInput.value = card.title;
+                toggleImageType();
+                editModal.classList.remove('hidden');
+            }
+        }
+        
+        function toggleImageType() {
+            const isEmployee = cardTypeSelect.value === 'employee';
+            imageUrlWrapper.style.display = isEmployee ? 'block' : 'none';
+        }
+
+        cardTypeSelect.addEventListener('change', toggleImageType);
+
+        function closeEditModal() {
+            state.editingCardId = null;
+            editModal.classList.add('hidden');
+        }
+
+        saveModalBtn.addEventListener('click', () => {
+            if (state.editingCardId) {
+                const card = state.cards.find(c => c.id === state.editingCardId);
+                if (card) {
+                    card.type = cardTypeSelect.value;
+                    card.imageUrl = imageUrlInput.value;
+                    card.name = cardNameInput.value;
+                    card.title = cardTitleInput.value;
+                    updateAndRender();
+                }
+            }
+            closeEditModal();
+        });
+        
+        deleteCardBtn.addEventListener('click', () => {
+            if (state.editingCardId && confirm('Tem certeza que deseja excluir este card?')) {
+                deleteCard(state.editingCardId);
+            }
+            closeEditModal();
+        });
+
+        cancelModalBtn.addEventListener('click', closeEditModal);
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) closeEditModal();
+        });
+
+        // --- Event Handlers ---
+        addCardBtn.addEventListener('click', () => {
+            addCard();
+        });
+        
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja apagar todo o organograma? Esta ação não pode ser desfeita.')) {
+                state.cards = [];
+                state.connections = [];
+                updateAndRender();
+            }
+        });
+
+        resetViewBtn.addEventListener('click', () => {
+            state.pan = { x: 0, y: 0, scale: 1 };
+            render();
+        });
+
+        viewModeBtn.addEventListener('click', () => {
+            window.open(window.location.href + '?view=true', '_blank');
+        });
+
+        connectModeBtn.addEventListener('click', () => {
+            state.isConnectMode = !state.isConnectMode;
+            state.firstConnectionTarget = null;
+            connectModeBtn.classList.toggle('active', state.isConnectMode);
+            render();
+        });
+        
+        toggleGuideBtn.addEventListener('click', () => {
+            resolutionGuide.classList.toggle('hidden');
+        });
+
+        // --- Pan and Drag Logic ---
+        let isPanning = false;
+        let startPos = { x: 0, y: 0 };
+        let startPan = { x: 0, y: 0 };
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (state.isViewMode) return;
+            
+            const cardEl = e.target.closest('.card');
+            const lineHandleEl = e.target.closest('.line-handle');
+
+            if (lineHandleEl && !state.isConnectMode) {
+                state.lineDragging.isDown = true;
+                state.lineDragging.connId = parseInt(lineHandleEl.dataset.connId);
+                state.lineDragging.startY = (e.clientY - state.pan.y) / state.pan.scale;
+            } else if (cardEl && !state.isConnectMode) {
+                state.dragging.isDown = true;
+                state.dragging.hasDragged = false; // Reset hasDragged flag
+                state.dragging.cardId = parseInt(cardEl.dataset.id);
+                const card = state.cards.find(c => c.id === state.dragging.cardId);
+                cardEl.classList.add('dragging');
+                state.dragging.dragStartPos = { x: e.clientX, y: e.clientY };
+                state.dragging.axisLock = null;
+                const mouseX = (e.clientX - state.pan.x) / state.pan.scale;
+                const mouseY = (e.clientY - state.pan.y) / state.pan.scale;
+                state.dragging.offset.x = mouseX - card.x;
+                state.dragging.offset.y = mouseY - card.y;
+            } else if (e.target === canvas) {
+                isPanning = true;
+                canvas.style.cursor = 'grabbing';
+                startPos = { x: e.clientX, y: e.clientY };
+                startPan = { ...state.pan };
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (state.lineDragging.isDown) {
+                const conn = state.connections.find(c => c.id === state.lineDragging.connId);
+                if (conn) {
+                    conn.customMidY = (e.clientY - state.pan.y) / state.pan.scale;
+                    render();
+                }
+            } else if (state.dragging.isDown) {
+                const card = state.cards.find(c => c.id === state.dragging.cardId);
+                if (card) {
+                    const dx = Math.abs(e.clientX - state.dragging.dragStartPos.x);
+                    const dy = Math.abs(e.clientY - state.dragging.dragStartPos.y);
+                    if (dx > 3 || dy > 3) {
+                        state.dragging.hasDragged = true; // It's a drag
+                    }
+
+                    const mouseX = (e.clientX - state.pan.x) / state.pan.scale;
+                    const mouseY = (e.clientY - state.pan.y) / state.pan.scale;
+                    
+                    let newX = mouseX - state.dragging.offset.x;
+                    let newY = mouseY - state.dragging.offset.y;
+
+                    if (e.shiftKey) {
+                        if (!state.dragging.axisLock) {
+                            if (dx > 5 || dy > 5) {
+                                state.dragging.axisLock = (dx > dy) ? 'Y' : 'X';
+                            }
+                        }
+                        if (state.dragging.axisLock === 'Y') newY = card.y;
+                        if (state.dragging.axisLock === 'X') newX = card.x;
                     } else {
-                        renderCart();
+                        state.dragging.axisLock = null;
+                    }
+                    card.x = newX;
+                    card.y = newY;
+                    render();
+                }
+            } else if (isPanning && !state.isViewMode) {
+                const dx = e.clientX - startPos.x;
+                const dy = e.clientY - startPos.y;
+                state.pan.x = startPan.x + dx;
+                state.pan.y = startPan.y + dy;
+                render();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            const wasDragged = state.dragging.hasDragged;
+            if (state.dragging.isDown) {
+                document.querySelector(`[data-id='${state.dragging.cardId}']`)?.classList.remove('dragging');
+                state.dragging.isDown = false;
+                state.dragging.cardId = null;
+                if (wasDragged) {
+                    updateAndRender(); // Only save to history if it was a drag
+                }
+            }
+             if (state.lineDragging.isDown) {
+                state.lineDragging.isDown = false;
+                state.lineDragging.connId = null;
+                updateAndRender();
+            }
+            if (isPanning) {
+                isPanning = false;
+                canvas.style.cursor = 'grab';
+            }
+            
+            // This ensures a click is processed if it wasn't a drag
+            if (!wasDragged) {
+                handleCanvasClick(e);
+            }
+        });
+        
+        function handleCanvasClick(e) {
+            if (state.isViewMode) return;
+            const cardEl = e.target.closest('.card');
+            const pathEl = e.target.closest('path');
+
+            if (state.isConnectMode) {
+                if (cardEl) {
+                    handleConnectionClick({ type: 'card', id: parseInt(cardEl.dataset.id) });
+                } else if (pathEl) {
+                    const worldPoint = {
+                        x: (e.clientX - state.pan.x) / state.pan.scale,
+                        y: (e.clientY - state.pan.y) / state.pan.scale
+                    };
+                    handleConnectionClick({ type: 'connection', id: parseInt(pathEl.dataset.connId), point: worldPoint });
+                }
+                return;
+            }
+            
+            if (e.target.classList.contains('add-btn')) {
+                addCard(parseInt(cardEl.dataset.id), e.target.dataset.direction);
+            } else if (cardEl) {
+                openEditModal(parseInt(cardEl.dataset.id));
+            }
+        }
+
+
+        function handleConnectionClick(target) {
+            // Snap point to line if target is a connection
+            if (target.type === 'connection') {
+                const conn = state.connections.find(c => c.id === target.id);
+                if (conn && conn.from && conn.to) {
+                    const p1 = getPointFromTarget(conn.from);
+                    const p2 = getPointFromTarget(conn.to);
+                    if(p1 && p2) {
+                        const midY = conn.customMidY !== undefined ? conn.customMidY : (p1.y + p2.y) / 2;
+                        const distToV1 = Math.abs(target.point.x - p1.x);
+                        const distToH = Math.abs(target.point.y - midY);
+                        const distToV2 = Math.abs(target.point.x - p2.x);
+                        
+                        if (distToH <= distToV1 && distToH <= distToV2) {
+                            target.point.y = midY; 
+                        } else if (distToV1 < distToV2) {
+                            target.point.x = p1.x; 
+                        } else {
+                            target.point.x = p2.x; 
+                        }
                     }
                 }
             }
-            
-            function toggleFavorite(product) {
-                const existingIndex = favorites.findIndex(item => item.id === product.id);
-                if (existingIndex > -1) {
-                    favorites.splice(existingIndex, 1);
-                } else {
-                    favorites.push(product);
-                }
-                renderProducts();
-                renderFavorites();
-            }
 
-            function toggleModal(modal, show) {
-                modal.classList.toggle('visible', show);
-            }
-
-            cartBtn.addEventListener('click', () => { renderCart(); toggleModal(cartModal, true); });
-            favoritesBtn.addEventListener('click', () => { renderFavorites(); toggleModal(favoritesModal, true); });
-            closeModalBtn.addEventListener('click', () => toggleModal(cartModal, false));
-            closeFavoritesModalBtn.addEventListener('click', () => toggleModal(favoritesModal, false));
-            cartModal.addEventListener('click', (e) => { if (e.target === cartModal) toggleModal(cartModal, false); });
-            favoritesModal.addEventListener('click', (e) => { if (e.target === favoritesModal) toggleModal(favoritesModal, false); });
-            
-            document.getElementById('checkout-btn').addEventListener('click', () => {
-                if (cart.length === 0) {
-                    // Exibe uma mensagem no console se o carrinho estiver vazio.
-                    console.log('Carrinho vazio!');
+            if (!state.firstConnectionTarget) {
+                state.firstConnectionTarget = target;
+            } else {
+                const from = state.firstConnectionTarget;
+                const to = target;
+                
+                if (from.id === to.id && from.type === to.type) {
+                    state.firstConnectionTarget = null;
+                    render();
                     return;
                 }
                 
-                // Monta a mensagem do pedido
-                let message = 'Olá! Gostaria de fazer um pedido com os seguintes itens:\n\n';
-                let total = 0;
+                state.connections.push({ id: Date.now(), from: from, to: to });
+                state.firstConnectionTarget = null;
+            }
+            updateAndRender();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+             if (e.ctrlKey && e.key === 'y') {
+                e.preventDefault();
+                redo();
+            }
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            if (state.isViewMode) return;
+            e.preventDefault();
+            const scaleAmount = 0.1;
+            const oldScale = state.pan.scale;
             
-                cart.forEach(item => {
-                    message += `*${item.name}* (${item.quantity}x) - R$ ${(item.price * item.quantity).toFixed(2).replace('.', ',')}\n`;
-                    total += item.price * item.quantity;
-                });
+            state.pan.scale *= (e.deltaY > 0 ? (1 - scaleAmount) : (1 + scaleAmount));
+            state.pan.scale = Math.max(0.1, Math.min(state.pan.scale, 3));
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
             
-                message += `\n*Total do Pedido: R$ ${total.toFixed(2).replace('.', ',')}*`;
-            
-                // Codifica a mensagem para ser usada na URL
-                const encodedMessage = encodeURIComponent(message);
-            
-                // --- LINHA CORRIGIDA ---
-                // Usa a URL da API do WhatsApp para garantir a abertura no WhatsApp Web
-                const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
-            
-                // Abre o link em uma nova aba
-                window.open(whatsappUrl, '_blank');
+            state.pan.x = mouseX - (mouseX - state.pan.x) * (state.pan.scale / oldScale);
+            state.pan.y = mouseY - (mouseY - state.pan.y) * (state.pan.scale / oldScale);
+
+            render();
+        });
+        
+        function fitToScreen() {
+            const currentCanvas = viewCanvas;
+            const currentWorld = viewWorld;
+            if (state.cards.length === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            state.cards.forEach(card => {
+                minX = Math.min(minX, card.x);
+                minY = Math.min(minY, card.y);
+                maxX = Math.max(maxX, card.x + CARD_WIDTH);
+                maxY = Math.max(maxY, card.y + CARD_HEIGHT);
             });
 
-            renderProducts();
-        });
+            const chartWidth = maxX - minX;
+            const chartHeight = maxY - minY;
+            const canvasWidth = currentCanvas.clientWidth;
+            const canvasHeight = currentCanvas.clientHeight;
+
+            const scaleX = canvasWidth / chartWidth;
+            const scaleY = canvasHeight / chartHeight;
+            const scale = Math.min(scaleX, scaleY) * 0.9; // 90% padding
+
+            const newWidth = chartWidth * scale;
+            const newHeight = chartHeight * scale;
+
+            const offsetX = (canvasWidth - newWidth) / 2 - (minX * scale);
+            const offsetY = (canvasHeight - newHeight) / 2 - (minY * scale);
+
+            const transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            currentWorld.style.transform = transform;
+        }
+
+        // --- Initialization ---
+        function initialize() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isViewOnly = urlParams.get('view') === 'true';
+            
+            loadState();
+
+            if (isViewOnly) {
+                editorContainer.style.display = 'none';
+                viewPageContainer.style.display = 'flex';
+                timestampEl.textContent = new Date().toLocaleString('pt-BR');
+                render(true);
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'orgChartBuilderState') {
+                        loadState();
+                        render(true);
+                    }
+                });
+            } else {
+                render();
+            }
+        }
+        
+        function updateAndRender() {
+            pushStateToHistory();
+            render();
+        }
+
+        initialize();
+    });
